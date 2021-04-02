@@ -214,7 +214,7 @@ class RandomSelector {
                         }
 
                         $score += count($song->favored_by);
-                        $score += max(0, 10 - count($song->play_count) * 15);
+                        $score += max(0, (10 - $song->play_count) * 15);
 
                         $song->score = $score;
                     }
