@@ -164,16 +164,16 @@ class RandomSelector {
                 }
                 $promises[] = $this->getGems(20);
                 $promises[] = $this->getRandomOpEd(5);
-                $promises[] = $this->getRelated(null,15);
-                $promises[] = new Promise(function ($resolve, $reject){
+                $promises[] = $this->getRelated(null, 15);
+                $promises[] = (new Promise(function ($resolve, $reject){
                     $this->database->getRandom()->then(function ($r) use ($resolve){
                         $resolve([$r]);
                     })->otherwise($reject);
-                });
+                }));
 
                 \React\Promise\reduce($promises, function ($carry, $item){
                     return array_merge($carry, $item);
-                }, [])->then(function ($data) use ($resolve, $desiredQueueLength){
+                }, [])->then(function ($data) use ($promises, $resolve, $desiredQueueLength){
                     $this->getBestFit($this->filterSongs($data), $desiredQueueLength - count($this->pool))->then(function ($songs) use ($resolve){
                         $this->pool = array_merge($this->pool, $songs);
                         $resolve();
@@ -195,16 +195,16 @@ class RandomSelector {
                 $this->api->getNowRandom()->then(function ($nr) use ($songs, $limit, $np, $resolve){
                     foreach ($songs as $song){
                         $score = 1;
-                        if($nr->album === $song->album){
+                        if(($nr->album ?? "") === $song->album){
                             $score += 100;
                         }
-                        if($nr->artist === $song->artist){
+                        if(($nr->artist ?? "") === $song->artist){
                             $score += 100;
                         }
-                        if($np->album === $song->album){
+                        if(($np->album ?? "") === $song->album){
                             $score += 20;
                         }
-                        if($np->artist === $song->artist){
+                        if(($np->artist ?? "") === $song->artist){
                             $score += 20;
                         }
                         foreach ($song->favored_by as $u){
@@ -226,7 +226,7 @@ class RandomSelector {
                         return ($a->score > $b->score) ? -1 : 1;
                     });
 
-                    $resolve(array_slice($songs, 0, min(count($songs, $limit))));
+                    $resolve(array_slice($songs, 0, min(count($songs), $limit)));
                 });
             });
         });
@@ -247,8 +247,8 @@ class RandomSelector {
 
             $p = $this->pool;
             shuffle($p);
-            $this->getBestFit(array_slice($p, 0, ceil(count($p) / 2)))->then(function ($song) use ($resolve){
-                $this->database->getSongById($song)->then(function ($song) use ($resolve){
+            $this->getBestFit(array_slice($p, 0, ceil(count($p) / 2)))->then(function ($songs) use ($resolve){
+                $this->database->getSongById($songs[0])->then(function ($song) use ($resolve){
                     $this->knownArtists->add($song->artist);
                     $this->knownAlbums->add($song->album);
                     $this->knownTitles->add($song->title);

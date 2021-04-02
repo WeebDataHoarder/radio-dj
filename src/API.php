@@ -13,8 +13,7 @@ class API{
     private string $apiKey;
 
     public function __construct(LoopInterface $loop, string $baseUrl, string $apiKey){
-        $this->client = new Browser($loop);
-        $this->client->withBase($baseUrl)->withTimeout(15);
+        $this->client = (new Browser($loop))->withBase($baseUrl)->withTimeout(15);
         $this->apiKey = $apiKey;
     }
 

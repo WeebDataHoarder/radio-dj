@@ -36,7 +36,7 @@ class RequestHandler{
             array(
                 'Content-Type' => 'application/json; charset=utf-8'
             ),
-            json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_NUMERIC_CHECK)
         );
     }
 
