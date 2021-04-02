@@ -1,0 +1,16 @@
+<?php
+
+const DEFAULT_API_KEY = "EXAMPLE_DEFAULT_API_KEY";
+
+const DB_USER = "EXAMPLE_DB_USER";
+const DB_PASSWORD = "EXAMPLE_DB_PASSWORD";
+const DB_HOST = "EXAMPLE_DB_HOST";
+const DB_PORT = 5432;
+
+const DB_MUSIC_NAME = "EXAMPLE_DB_MUSIC_NAME";
+const DB_TORRENTS_NAME = "EXAMPLE_DB_TORRENTS_NAME";
+
+const HOST_NGINX = "nginx:80";
+const HOST_API = "api:8011";
+const HOST_KAWA = "kawa:4040";
+const HOST_KAWA_STREAM = "kawa:8001";

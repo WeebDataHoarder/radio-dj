@@ -1,0 +1,26 @@
+{
+  "name": "weebdatahoarder/radio-dj",
+  "type": "project",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "WeebDataHoarder",
+      "email": "57538841+WeebDataHoarder@users.noreply.github.com"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "Dj\\": "src/"
+    }
+  },
+  "require": {
+    "php" : ">=7.4",
+    "ext-json": "*",
+    "ext-curl": "*",
+    "voryx/pgasync": "^2.0",
+    "react/promise": "^2.8",
+    "react/event-loop": "^1.1",
+    "react/http": "^1.2"
+  },
+  "description": ""
+}
