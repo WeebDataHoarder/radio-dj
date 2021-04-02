@@ -191,8 +191,8 @@ class RandomSelector {
 
     public function getBestFit($songs, $limit = 1){
         return new Promise(function (callable $resolve, callable $reject) use ($songs, $limit){
-            $this->database->getNowPlaying()->then(function ($np) use ($songs, $limit, $resolve){
-                $this->api->getNowRandom()->then(function ($nr) use ($songs, $limit, $np, $resolve){
+            $this->database->getNowPlaying()->then(function ($np) use ($songs, $limit, $resolve, $reject){
+                $this->api->getNowRandom()->then(function ($nr) use ($songs, $limit, $np, $resolve, $reject){
                     foreach ($songs as $song){
                         $score = 1;
                         if(($nr->album ?? "") === $song->album){
@@ -227,8 +227,8 @@ class RandomSelector {
                     });
 
                     $resolve(array_slice($songs, 0, min(count($songs), $limit)));
-                });
-            });
+                })->otherwise($reject);
+            })->otherwise($reject);
         });
     }
 
@@ -258,6 +258,14 @@ class RandomSelector {
                     $this->knownAlbums->add($song->album);
                     $this->knownTitles->add($song->title);
                     $resolve($song);
+                })->otherwise(function ($e) use($resolve){
+                    echo $e;
+                    $this->database->getRandom()->then(function ($song) use($resolve){
+                        $this->knownArtists->add($song->artist);
+                        $this->knownAlbums->add($song->album);
+                        $this->knownTitles->add($song->title);
+                        $resolve($song);
+                    });
                 });
             });
         });
