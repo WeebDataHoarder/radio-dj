@@ -248,7 +248,7 @@ class RandomSelector {
             $p = $this->pool;
             shuffle($p);
             $this->getBestFit(array_slice($p, 0, ceil(count($p) / 2)))->then(function ($songs) use ($resolve){
-                $this->database->getSongById($songs[0])->then(function ($song) use ($resolve){
+                $this->database->getSongById($songs[0]->id)->then(function ($song) use ($resolve){
                     $this->knownArtists->add($song->artist);
                     $this->knownAlbums->add($song->album);
                     $this->knownTitles->add($song->title);
