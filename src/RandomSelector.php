@@ -86,7 +86,12 @@ class RandomSelector {
         return new Promise(function (callable $resolve, callable $reject) use($limit){
             $promises = [];
             foreach ($this->listeners as $l){
-                $promises[] = $this->database->getSongsByUserFavorite($l, 100, Database::ORDER_BY_RANDOM);
+                $promises[] = $this->database->getSongsByUserFavorite($l, 10, Database::ORDER_BY_RANDOM);
+                $promises[] = new Promise(function ($resolve, $reject) use ($l) {
+                    $this->database->getSongsByUserFavorite($l, 10, Database::ORDER_BY_RANDOM)->then(function ($songs) use ($resolve) {
+                        $this->getRelated($songs, 90)->then($resolve);
+                    });
+                });
             }
 
             \React\Promise\reduce($promises, function ($carry, $item){
@@ -105,9 +110,9 @@ class RandomSelector {
         });
     }
 
-    public function getRelated($limit = 5) : Promise {
-        return new Promise(function (callable $resolve, callable $reject) use($limit){
-            $this->database->getHistory(5)->then(function ($songs) use ($resolve, $limit) {
+    public function getRelated($songs = null, $limit = 5) : Promise {
+        return new Promise(function (callable $resolve, callable $reject) use($songs, $limit){
+            ($songs === null ? $this->database->getHistory(5) : \React\Promise\resolve($songs))->then(function ($songs) use ($resolve, $limit) {
                 $promises = [];
                 foreach ($songs as $song){
                     if($this->knownAlbums->count($song->album) < 2){
@@ -150,16 +155,16 @@ class RandomSelector {
         });
     }
 
-    public function recreateQueue($desiredQueueLength = 64) : Promise{
+    public function recreateQueue($desiredQueueLength = 8) : Promise{
         return new Promise(function ($resolve, $reject) use ($desiredQueueLength){
             if(count($this->pool) < $desiredQueueLength){
                 $promises = [];
                 if(count($this->listeners) > 0){
-                    $promises[] = $this->getFromListeners(30);
+                    $promises[] = $this->getFromListeners(60);
                 }
                 $promises[] = $this->getGems(20);
-                $promises[] = $this->getRandomOpEd(10);
-                $promises[] = $this->getRelated(15);
+                $promises[] = $this->getRandomOpEd(5);
+                $promises[] = $this->getRelated(null,15);
                 $promises[] = new Promise(function ($resolve, $reject){
                     $this->database->getRandom()->then(function ($r) use ($resolve){
                         $resolve([$r]);
@@ -169,14 +174,10 @@ class RandomSelector {
                 \React\Promise\reduce($promises, function ($carry, $item){
                     return array_merge($carry, $item);
                 }, [])->then(function ($data) use ($resolve, $desiredQueueLength){
-                    $songs = $this->filterSongs($data);
-                    for($i = count($this->pool); $i < $desiredQueueLength; ++$i){
-                        if(count($songs) > 0){
-                            shuffle($songs);
-                            $this->pool[] = array_pop($songs);
-                        }
-                    }
-                    $resolve();
+                    $this->getBestFit($this->filterSongs($data), $desiredQueueLength - count($this->pool))->then(function ($songs) use ($resolve){
+                        $this->pool = array_merge($this->pool, $songs);
+                        $resolve();
+                    });
                 });
             }else{
                 $resolve();
@@ -186,6 +187,49 @@ class RandomSelector {
 
     public function getQueue(): array {
         return $this->pool;
+    }
+
+    public function getBestFit($songs, $limit = 1){
+        return new Promise(function (callable $resolve, callable $reject) use ($songs, $limit){
+            $this->database->getNowPlaying()->then(function ($np) use ($songs, $limit, $resolve){
+                $this->api->getNowRandom()->then(function ($nr) use ($songs, $limit, $np, $resolve){
+                    foreach ($songs as $song){
+                        $score = 1;
+                        if($nr->album === $song->album){
+                            $score += 100;
+                        }
+                        if($nr->artist === $song->artist){
+                            $score += 100;
+                        }
+                        if($np->album === $song->album){
+                            $score += 20;
+                        }
+                        if($np->artist === $song->artist){
+                            $score += 20;
+                        }
+                        foreach ($song->favored_by as $u){
+                            if(in_array($u, $this->listeners, true)){
+                                $score += 10;
+                            }
+                        }
+
+                        $score += count($song->favored_by);
+                        $score += max(0, 10 - count($song->play_count) * 15);
+
+                        $song->score = $score;
+                    }
+
+                    usort($songs, function (\stdClass $a, \stdClass $b){
+                        if($a->score === $b->score){
+                            return 0;
+                        }
+                        return ($a->score > $b->score) ? -1 : 1;
+                    });
+
+                    $resolve(array_slice($songs, 0, min(count($songs, $limit))));
+                });
+            });
+        });
     }
 
     public function popQueue(): Promise {
@@ -201,38 +245,16 @@ class RandomSelector {
                 return;
             }
 
-            $this->database->getNowPlaying()->then(function ($np) use ($resolve){
-                $bestFit = [0, null];
-                shuffle($this->pool);
-                foreach (array_slice($this->pool, 0, ceil(count($this->pool) / 2)) as $song){
-                    $score = 1;
-                    if($np->album === $song->album){
-                        $score += 100;
-                    }
-                    if($np->artist === $song->artist){
-                        $score += 100;
-                    }
-                    foreach ($np->favored_by as $u){
-                        if(in_array($u, $this->listeners, true)){
-                            $score += 10;
-                        }
-                    }
-
-                    $score += count($song->favored_by);
-
-                    if($score > $bestFit[0]){
-                        $bestFit = [$score, $song];
-                    }
-                }
-                $song = $bestFit[1];
-
-                $this->knownArtists->add($song->artist);
-                $this->knownAlbums->add($song->album);
-                $this->knownTitles->add($song->title);
-                $resolve($song);
+            $p = $this->pool;
+            shuffle($p);
+            $this->getBestFit(array_slice($p, 0, ceil(count($p) / 2)))->then(function ($song) use ($resolve){
+                $this->database->getSongById($song)->then(function ($song) use ($resolve){
+                    $this->knownArtists->add($song->artist);
+                    $this->knownAlbums->add($song->album);
+                    $this->knownTitles->add($song->title);
+                    $resolve($song);
+                });
             });
-
-
         });
 
     }

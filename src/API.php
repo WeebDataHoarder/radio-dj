@@ -26,6 +26,14 @@ class API{
         });
     }
 
+    public function getNowRandom() : Promise{
+        return new Promise(function ($resolve, $reject) {
+            $this->request("/api/nr")->then(function ($data) use($resolve){
+                $resolve($data);
+            })->otherwise($reject);
+        });
+    }
+
     public function getQueue() : Promise{
         return new Promise(function ($resolve, $reject) {
             $this->request("/api/queue")->then(function ($data) use($resolve){
