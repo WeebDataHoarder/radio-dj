@@ -422,7 +422,13 @@ class RandomSelector {
     public function filterSongs(array $entries, callable $filter = null): array {
         $newData = [];
         foreach ($entries as $song){
-            if($this->knownTitles->count($song->title) >= 1){
+            if($song->duration < 100 or $song->duration > 700){
+                continue;
+            }else if(in_array("drama", $song->tags, true) or in_array("noise", $song->tags, true)){
+                continue;
+            }else if(preg_match("#[^\w](w/o|without)[^\w].*[\)\]-]$|(karaoke|instrumental|acoustic|off vocal|vocal off|short size|movie size|tv size|tv anime|tv|カラオケ)[・\s]*(カラオケ|バージョン)?(.*ver(sion|.)?)?\s*[->~～\])）]?[)\]]?\s*$#", $song->title) > 0){
+                continue;
+            }else if($this->knownTitles->count($song->title) >= 1){
                 continue;
             } else if($this->knownArtists->count($song->artist) >= 4){
                 continue;

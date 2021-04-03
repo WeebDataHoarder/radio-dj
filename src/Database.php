@@ -66,8 +66,6 @@ songs.status
 SQL;
     public const ORDER_BY_SCORE = 'ORDER BY (favorite_count * 5 + play_count + (CASE WHEN path ILIKE \'%%.flac\' THEN 5 ELSE 0 END)) DESC, path ASC';
     public const ORDER_BY_RANDOM = 'ORDER BY random()';
-    private const WHERE_EXCLUDER = '(duration >= 100 AND duration < 700 AND NOT songs.id IN(SELECT song FROM taggings WHERE taggings.tag IN(SELECT id FROM tags WHERE (tags.name = \'drama\' OR tags.name = \'noise\'))) AND songs.title !~* \'[^\w](w/o|without)[^\w].*[\)\]-]$|(karaoke|instrumental|acoustic|off vocal|vocal off|short size|movie size|tv size|tv anime|tv|カラオケ)[・\s]*(カラオケ|バージョン)?(.*ver(sion|.)?)?\s*[->~～\])）]?[)\]]?\s*$\')';
-
     private Client $client;
 
     public function __construct(LoopInterface $loop, $host, $port, $user, $password, $db){
@@ -137,7 +135,7 @@ SQL;
     public function getSongsByTag(string $string, int $limit = 0, $orderBy = self::ORDER_BY_SCORE): Promise {
         return new Promise(function (callable $resolve, callable $reject) use($string, $limit, $orderBy) {
             $sql = self::SONG_SQL;
-            $sql = str_replace("{WHERE_REPLACEMENT}", "WHERE songs.status = 'active' AND songs.id IN(SELECT song FROM taggings WHERE taggings.tag = (SELECT id FROM tags WHERE tags.name = \$1)) AND " . self::WHERE_EXCLUDER, $sql);
+            $sql = str_replace("{WHERE_REPLACEMENT}", "WHERE songs.status = 'active' AND songs.id IN(SELECT song FROM taggings WHERE taggings.tag = (SELECT id FROM tags WHERE tags.name = \$1))", $sql);
 
             $result = [];
             $this->client->executeStatement($sql . " " . $orderBy . ($limit > 0 ? " LIMIT " . $limit . ";" : ""), [$string])->subscribe(function ($row) use (&$result){
@@ -154,7 +152,7 @@ SQL;
     public function getSongsByUserFavorite(string $string, int $limit = 0, $orderBy = self::ORDER_BY_SCORE): Promise {
         return new Promise(function (callable $resolve, callable $reject) use($string, $limit, $orderBy) {
             $sql = self::SONG_SQL;
-            $sql = str_replace("{WHERE_REPLACEMENT}", "WHERE songs.status = 'active' AND songs.id IN(SELECT song FROM favorites WHERE favorites.user_id = (SELECT id FROM users WHERE users.name = \$1)) AND " . self::WHERE_EXCLUDER, $sql);
+            $sql = str_replace("{WHERE_REPLACEMENT}", "WHERE songs.status = 'active' AND songs.id IN(SELECT song FROM favorites WHERE favorites.user_id = (SELECT id FROM users WHERE users.name = \$1))", $sql);
 
             $result = [];
             $this->client->executeStatement($sql . " " . $orderBy . ($limit > 0 ? " LIMIT " . $limit . ";" : ""), [$string])->subscribe(function ($row) use (&$result){
@@ -171,7 +169,7 @@ SQL;
     public function getFavoriteCountSongs(int $minCount, int $maxCount, int $limit = 0, $orderBy = self::ORDER_BY_SCORE): Promise {
         return new Promise(function (callable $resolve, callable $reject) use($minCount, $maxCount, $limit, $orderBy) {
             $sql = self::SONG_SQL;
-            $sql = str_replace("{WHERE_REPLACEMENT}", "WHERE songs.status = 'active' AND songs.favorite_count > \$1 AND songs.favorite_count <= \$2 AND " . self::WHERE_EXCLUDER, $sql);
+            $sql = str_replace("{WHERE_REPLACEMENT}", "WHERE songs.status = 'active' AND songs.favorite_count > \$1 AND songs.favorite_count <= \$2", $sql);
 
             $result = [];
             $this->client->executeStatement($sql . " " . $orderBy . ($limit > 0 ? " LIMIT " . $limit . ";" : ""), [$minCount, $maxCount])->subscribe(function ($row) use (&$result){
@@ -188,7 +186,7 @@ SQL;
     public function getSongsByNotUserFavorite(string $string, int $limit = 0, $orderBy = self::ORDER_BY_SCORE): Promise {
         return new Promise(function (callable $resolve, callable $reject) use($string, $limit, $orderBy) {
             $sql = self::SONG_SQL;
-            $sql = str_replace("{WHERE_REPLACEMENT}", "WHERE songs.status = 'active' AND songs.favorite_count > 0 AND NOT songs.id IN(SELECT song FROM favorites WHERE favorites.user_id = (SELECT id FROM users WHERE users.name = \$1)) AND " . self::WHERE_EXCLUDER, $sql);
+            $sql = str_replace("{WHERE_REPLACEMENT}", "WHERE songs.status = 'active' AND songs.favorite_count > 0 AND NOT songs.id IN(SELECT song FROM favorites WHERE favorites.user_id = (SELECT id FROM users WHERE users.name = \$1))", $sql);
 
             $result = [];
             $this->client->executeStatement($sql . " " . $orderBy . ($limit > 0 ? " LIMIT " . $limit . ";" : ""), [$string])->subscribe(function ($row) use (&$result){
@@ -205,7 +203,7 @@ SQL;
     public function getSongsByAlbum(string $string, int $limit = 0, $orderBy = self::ORDER_BY_SCORE): Promise {
         return new Promise(function (callable $resolve, callable $reject) use($string, $limit, $orderBy) {
             $sql = self::SONG_SQL;
-            $sql = str_replace("{WHERE_REPLACEMENT}", "WHERE songs.status = 'active' AND songs.album IN(SELECT id FROM albums WHERE name ILIKE \$1) AND " . self::WHERE_EXCLUDER, $sql);
+            $sql = str_replace("{WHERE_REPLACEMENT}", "WHERE songs.status = 'active' AND songs.album IN(SELECT id FROM albums WHERE name ILIKE \$1)", $sql);
 
             $result = [];
             $this->client->executeStatement($sql . " " . $orderBy . ($limit > 0 ? " LIMIT " . $limit . ";" : ""), [$string])->subscribe(function ($row) use (&$result){
@@ -222,7 +220,7 @@ SQL;
     public function getSongsByArtist(string $string, int $limit = 0, $orderBy = self::ORDER_BY_SCORE): Promise {
         return new Promise(function (callable $resolve, callable $reject) use($string, $limit, $orderBy) {
             $sql = self::SONG_SQL;
-            $sql = str_replace("{WHERE_REPLACEMENT}", "WHERE songs.status = 'active' AND songs.artist IN(SELECT id FROM artists WHERE name ILIKE \$1) AND " . self::WHERE_EXCLUDER, $sql);
+            $sql = str_replace("{WHERE_REPLACEMENT}", "WHERE songs.status = 'active' AND songs.artist IN(SELECT id FROM artists WHERE name ILIKE \$1)", $sql);
 
             $result = [];
             $this->client->executeStatement($sql . " " . $orderBy . ($limit > 0 ? " LIMIT " . $limit . ";" : ""), [$string])->subscribe(function ($row) use (&$result){
