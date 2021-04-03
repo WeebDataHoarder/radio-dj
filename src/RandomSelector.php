@@ -418,14 +418,15 @@ class KnownValuesContainer {
     }
 
     public function exists($k): bool {
-        return isset($this->values[$k]);
+        return isset($this->values[strtolower($k)]);
     }
 
     public function count($k): int {
-        return $this->values[$k] ?? 0;
+        return $this->values[strtolower($k)] ?? 0;
     }
 
     public function add($k){
+        $k = strtolower($k);
         $value = 1;
         if($this->exists($k)){
             $value = $this->values[$k] + 1;
