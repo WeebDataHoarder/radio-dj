@@ -208,7 +208,7 @@ class RandomSelector {
     public function recreateQueue($desiredQueueLength = 64) : Promise{
         return new Promise(function ($resolve, $reject) use ($desiredQueueLength){
             $this->pool = $this->filterSongs($this->pool, function ($song){
-                if($this->knownAlbums->count($song->album) >= 2){
+                if($this->knownArtists->count($song->artist) > 0 and $this->knownAlbums->count($song->album) >= 2){
                     return true;
                 }
                 return false;
