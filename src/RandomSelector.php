@@ -16,7 +16,10 @@ class RandomSelector {
 
     private array $pool = [];
     private array $listeners = [];
-    private $nr;
+    private array $tagBias = [];
+    private int $tagBiasSum = 0;
+    private int $tagBiasMax = 0;
+    private object $nr;
 
 
     public function __construct(LoopInterface $loop, Database $database, API $api) {
@@ -36,6 +39,7 @@ class RandomSelector {
             $this->knownArtists->add($nr->artist);
             $this->knownAlbums->add($nr->album);
             $this->knownTitles->add($nr->title);
+            $this->addSongTagBias($nr);
         });
 
         $this->database->getHistory(1000)->then(function ($songs){
@@ -43,10 +47,39 @@ class RandomSelector {
                 $this->knownArtists->add($song->artist);
                 $this->knownAlbums->add($song->album);
                 $this->knownTitles->add($song->title);
+                $this->addSongTagBias($song);
             }
         });
 
         $loop->addPeriodicTimer(10, [$this, "checkQueue"]);
+    }
+
+    public function getSongTagBias($song){
+        $bias = 1;
+        foreach ($song->tags as $t){
+            if(!preg_match("#^(catalog|(ab|jps|red|bbt)[tgsa])-#iu", $t) and $t !== "op" and $t !== "ed" and $t !== "aotw"){
+                $bias *= $this->getTagBias($t);
+            }
+        }
+        return 100 * $bias;
+    }
+
+    public function getTagBias($tag){
+        return ($this->tagBiasMax - $this->tagBias[$tag] ?? 0) / $this->tagBiasMax;
+    }
+
+    public function addSongTagBias($song){
+        foreach ($song->tags as $t){
+            if(!preg_match("#^(catalog|(ab|jps|red|bbt)[tgsa])-#iu", $t) and $t !== "op" and $t !== "ed" and $t !== "aotw"){
+                $this->addTagBias($t);
+            }
+        }
+    }
+
+    public function addTagBias($tag){
+        $this->tagBias[$tag] = ($this->tagBias[$tag] ?? 0) + 1;
+        $this->tagBiasSum = array_sum($this->tagBias);
+        $this->tagBiasMax = max($this->tagBias);
     }
 
     public function getRandomOpEd($limit = 5) : Promise {
@@ -76,7 +109,7 @@ class RandomSelector {
         return new Promise(function (callable $resolve, callable $reject) use($limit){
             \React\Promise\reduce([
                 $this->database->getFavoriteCountSongs(1, 3, 100, Database::ORDER_BY_RANDOM),
-                $this->database->getSongsByTag("aotw", 50, Database::ORDER_BY_RANDOM),
+                $this->database->getSongsByTag("aotw", 100, Database::ORDER_BY_RANDOM),
             ], function ($carry, $item){
                 return array_merge($carry, $item);
             }, [])->then(function ($data) use ($resolve, $limit){
@@ -90,18 +123,12 @@ class RandomSelector {
                         return true;
                     }
 
+                    if(count($song->favored_by) > 0 and count($song->favored_by) < 4){
+                        $song->preferential = true;
+                    }
                     return false;
                 });
-                $selected = [];
-                for($i = 0; $i < $limit; ++$i){
-                    if(count($songs) > 0){
-                        shuffle($songs);
-                        $s = array_pop($songs);
-                        $s->preferential = true;
-                        $selected[] = $s;
-                    }
-                }
-                $resolve($selected);
+                $this->getBestFit($songs, $limit)->then($resolve);
             });
         });
     }
@@ -283,6 +310,8 @@ class RandomSelector {
                     $score += min(20, count($song->favored_by) * 5);
                     $score += max(0, (10 - $song->play_count) * 4);
 
+                    $score += $this->getSongTagBias($song);
+
                     $song->score = $score;
                 }
 
@@ -306,6 +335,7 @@ class RandomSelector {
                     $this->knownArtists->add($song->artist);
                     $this->knownAlbums->add($song->album);
                     $this->knownTitles->add($song->title);
+                    $this->addSongTagBias($song);
                     $this->nr = $song;
                     $resolve($song);
                 });
@@ -330,6 +360,7 @@ class RandomSelector {
                         $this->knownArtists->add($song->artist);
                         $this->knownAlbums->add($song->album);
                         $this->knownTitles->add($song->title);
+                        $this->addSongTagBias($song);
                         $this->nr = $song;
                         $resolve($song);
                     })->otherwise(function ($e) use ($resolve){
@@ -338,6 +369,7 @@ class RandomSelector {
                             $this->knownArtists->add($song->artist);
                             $this->knownAlbums->add($song->album);
                             $this->knownTitles->add($song->title);
+                            $this->addSongTagBias($song);
                             $this->nr = $song;
                             $resolve($song);
                         });
@@ -348,6 +380,7 @@ class RandomSelector {
                         $this->knownArtists->add($song->artist);
                         $this->knownAlbums->add($song->album);
                         $this->knownTitles->add($song->title);
+                        $this->addSongTagBias($song);
                         $this->nr = $song;
                         $resolve($song);
                     });
