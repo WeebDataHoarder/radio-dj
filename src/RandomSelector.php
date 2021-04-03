@@ -118,16 +118,17 @@ class RandomSelector {
         });
     }
 
-    public function getRelated($songs = null, $limit = 5) : Promise {
-        return new Promise(function (callable $resolve, callable $reject) use($songs, $limit){
-            ($songs === null ? $this->database->getHistory(5) : \React\Promise\resolve($songs))->then(function ($songs) use ($resolve, $limit) {
+    public function getRelated($initialSongs = null, $limit = 5) : Promise {
+        return new Promise(function (callable $resolve, callable $reject) use($initialSongs, $limit){
+            ($initialSongs === null ? $this->database->getHistory(5) : \React\Promise\resolve($initialSongs))->then(function ($songs) use ($initialSongs, $resolve, $limit) {
                 $promises = [];
+                $songs = $initialSongs === null ? array_merge([$this->nr], $songs) : $songs;
                 foreach ($songs as $song){
-                    if($this->knownAlbums->count($song->album) < 2){
+                    if($this->knownAlbums->count($song->album) < 5){
                         $promises[] = $this->database->getSongsByAlbum($song->album, 50);
                         $promises[] = $this->database->getSongsByAlbum($song->album, 10, Database::ORDER_BY_RANDOM);
                     }
-                    if($this->knownArtists->count($song->artist) < 2){
+                    if($this->knownArtists->count($song->artist) < 5){
                         $promises[] = $this->database->getSongsByArtist($song->artist, 50);
                         $promises[] = $this->database->getSongsByArtist($song->artist, 10, Database::ORDER_BY_RANDOM);
                     }
@@ -138,12 +139,16 @@ class RandomSelector {
                     return array_merge($carry, $item);
                 }, [])->then(function ($data) use ($resolve, $limit){
                     $songs = $this->filterSongs($data);
-                    $selected = [];
-                    for($i = 0; $i < $limit; ++$i){
-                        if(count($songs) > 0){
-                            shuffle($songs);
-                            $selected[] = array_pop($songs);
+                    if(count($songs) > $limit){
+                        $selected = [];
+                        for($i = 0; $i < $limit; ++$i){
+                            if(count($songs) > 0){
+                                shuffle($songs);
+                                $selected[] = array_pop($songs);
+                            }
                         }
+                    }else{
+                        $selected = $songs;
                     }
                     $resolve($selected);
                 });
@@ -205,7 +210,7 @@ class RandomSelector {
             $this->database->getNowPlaying()->then(function ($np) use ($songs, $limit, $resolve, $reject){
                 $nr = $this->nr;
                 foreach ($songs as $song){
-                    $score = isset($song->preferential) ? 50 : 1;
+                    $score = isset($song->preferential) ? 20 : 1;
                     if(($nr->album ?? "") === $song->album){
                         $score += 100;
                     }
@@ -256,20 +261,31 @@ class RandomSelector {
                 return;
             }
 
-            $p = $this->pool;
-            shuffle($p);
-            $this->getBestFit(array_slice($p, 0, ceil(count($p) / 2)))->then(function ($songs) use ($resolve){
-                $this->database->getSongById($songs[0]->id)->then(function ($song) use ($resolve){
-                    foreach ($this->pool as $k => $s){
-                        if($song->id === $s->id){
-                            unset($this->pool[$k]);
+            $this->getRelated(500)->then(function ($songs) use($resolve, $reject){
+                $p = array_merge($this->pool, $songs);
+
+                $this->getBestFit($p)->then(function ($songs) use ($resolve){
+                    $this->database->getSongById($songs[0]->id)->then(function ($song) use ($resolve){
+                        foreach ($this->pool as $k => $s){
+                            if($song->id === $s->id){
+                                unset($this->pool[$k]);
+                            }
                         }
-                    }
-                    $this->knownArtists->add($song->artist);
-                    $this->knownAlbums->add($song->album);
-                    $this->knownTitles->add($song->title);
-                    $this->nr = $song;
-                    $resolve($song);
+                        $this->knownArtists->add($song->artist);
+                        $this->knownAlbums->add($song->album);
+                        $this->knownTitles->add($song->title);
+                        $this->nr = $song;
+                        $resolve($song);
+                    })->otherwise(function ($e) use ($resolve){
+                        echo $e;
+                        $this->database->getRandom()->then(function ($song) use($resolve){
+                            $this->knownArtists->add($song->artist);
+                            $this->knownAlbums->add($song->album);
+                            $this->knownTitles->add($song->title);
+                            $this->nr = $song;
+                            $resolve($song);
+                        });
+                    });
                 })->otherwise(function ($e) use ($resolve){
                     echo $e;
                     $this->database->getRandom()->then(function ($song) use($resolve){
@@ -279,15 +295,6 @@ class RandomSelector {
                         $this->nr = $song;
                         $resolve($song);
                     });
-                });
-            })->otherwise(function ($e) use ($resolve){
-                echo $e;
-                $this->database->getRandom()->then(function ($song) use($resolve){
-                    $this->knownArtists->add($song->artist);
-                    $this->knownAlbums->add($song->album);
-                    $this->knownTitles->add($song->title);
-                    $this->nr = $song;
-                    $resolve($song);
                 });
             });
         });
