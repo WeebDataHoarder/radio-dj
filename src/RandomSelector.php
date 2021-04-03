@@ -200,8 +200,6 @@ class RandomSelector {
             $this->nr = $nr;
         });
 
-        $this->pool = $this->filterSongs($this->pool);
-
         $this->recreateQueue()->then(function (){
 
         });
@@ -209,6 +207,12 @@ class RandomSelector {
 
     public function recreateQueue($desiredQueueLength = 64) : Promise{
         return new Promise(function ($resolve, $reject) use ($desiredQueueLength){
+            $this->pool = $this->filterSongs($this->pool, function ($song){
+                if($this->knownAlbums->count($song->album) >= 2){
+                    return true;
+                }
+                return false;
+            });
             if(count($this->pool) < $desiredQueueLength){
                 $promises = [];
                 if(count($this->listeners) > 0){
