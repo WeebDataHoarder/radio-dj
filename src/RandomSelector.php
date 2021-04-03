@@ -203,9 +203,9 @@ class RandomSelector {
                     $promises[] = $this->database->getSongsByArtist($artist, 50, Database::ORDER_BY_RANDOM);
                 }
 
-                foreach (array_unique($tags) as $t){
-                    $promises[] = $this->database->getSongsByTag($t, 15, Database::ORDER_BY_RANDOM);
-                }
+                //foreach (array_unique($tags) as $t){
+                //    $promises[] = $this->database->getSongsByTag($t, 15, Database::ORDER_BY_RANDOM);
+                //}
 
                 \React\Promise\reduce($promises, function ($carry, $item){
                     return array_merge($carry, $item);
