@@ -176,21 +176,35 @@ class RandomSelector {
                 $promises = [];
                 $songs = (isset($this->nr->id) and $initialSongs === null) ? array_merge($songs, [$this->nr]) : $songs;
                 $ids = [];
+                $artists = [];
+                $albums = [];
+                $tags = [];
                 foreach ($songs as $song){
                     $ids[$song->id] = true;
                     if($this->knownAlbums->count($song->album) < 2){
-                        $promises[] = $this->database->getSongsByAlbum($song->album, 10, Database::ORDER_BY_SCORE);
-                        $promises[] = $this->database->getSongsByAlbum($song->album, 50, Database::ORDER_BY_RANDOM);
+                        $albums[] = $song->album;
                     }
                     if($this->knownArtists->count($song->artist) < 4){
-                        $promises[] = $this->database->getSongsByArtist($song->artist, 10, Database::ORDER_BY_SCORE);
-                        $promises[] = $this->database->getSongsByArtist($song->artist, 50, Database::ORDER_BY_RANDOM);
+                        $artists[] = $song->artist;
                     }
                     foreach ($song->tags as $t){
                         if(!preg_match("#^(catalog|(ab|jps|red|bbt)[tgsa])-#iu", $t) and $t !== "op" and $t !== "ed" and $t !== "aotw"){
-                            $promises[] = $this->database->getSongsByTag($t, 15, Database::ORDER_BY_RANDOM);
+                            $tags[] = $t;
                         }
                     }
+                }
+
+                foreach (array_unique($albums) as $album){
+                    $promises[] = $this->database->getSongsByAlbum($album, 10, Database::ORDER_BY_SCORE);
+                    $promises[] = $this->database->getSongsByAlbum($album, 50, Database::ORDER_BY_RANDOM);
+                }
+                foreach (array_unique($artists) as $artist){
+                    $promises[] = $this->database->getSongsByArtist($artist, 10, Database::ORDER_BY_SCORE);
+                    $promises[] = $this->database->getSongsByArtist($artist, 50, Database::ORDER_BY_RANDOM);
+                }
+
+                foreach (array_unique($tags) as $t){
+                    $promises[] = $this->database->getSongsByTag($t, 15, Database::ORDER_BY_RANDOM);
                 }
 
                 \React\Promise\reduce($promises, function ($carry, $item){
@@ -302,10 +316,10 @@ class RandomSelector {
 
                     foreach ($song->tags as $t){
                         if(!preg_match("#^(catalog|(ab|jps|red|bbt)[tgsa])-#iu", $t) and $t !== "op" and $t !== "ed" and $t !== "aotw"){
-                            if(in_array($t, $nr->tags, true)){
+                            if(isset($nr->tags) and in_array($t, $nr->tags, true)){
                                 $score += 10;
                             }
-                            if(in_array($t, $np->tags, true)){
+                            if(isset($np->tags) and in_array($t, $np->tags, true)){
                                 $score += 5;
                             }
                         }
@@ -318,11 +332,11 @@ class RandomSelector {
 
                     foreach (["op", "ed", "aotw", "banger"] as $t){
                         if(in_array($t, $song->tags, true)){
-                            $score += 10;
+                            $score += 5;
                         }
                     }
 
-                    $score += min(20, count($song->favored_by) * 5);
+                    $score += min(40, count($song->favored_by) * 5);
                     $score += max(0, (10 - $song->play_count) * 4);
 
                     $score += $this->getSongTagBias($song);
