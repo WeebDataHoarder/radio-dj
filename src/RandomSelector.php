@@ -147,7 +147,7 @@ class RandomSelector {
                     return array_merge($carry, $item);
                 }, [])->then(function ($data) use ($resolve, $limit){
                     $songs = $this->filterSongs($data, function ($song){
-                        if($this->knownAlbums->count($song->album) >= 1){
+                        if($this->knownAlbums->count($song->album) >= 2){
                             return true;
                         }
                         return false;
