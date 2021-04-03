@@ -23,8 +23,8 @@ class RandomSelector {
         $this->database = $database;
         $this->api = $api;
 
-        $this->knownAlbums = new KnownValuesContainer(100);
-        $this->knownArtists = new KnownValuesContainer(300);
+        $this->knownAlbums = new KnownValuesContainer(50);
+        $this->knownArtists = new KnownValuesContainer(20);
         $this->knownTitles = new KnownValuesContainer(3000);
         $this->nr = (object) [];
 
