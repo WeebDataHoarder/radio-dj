@@ -132,7 +132,7 @@ class RandomSelector {
                 $promises = [];
                 $songs = (isset($this->nr->hash) and $initialSongs === null) ? array_merge($songs, [$this->nr]) : $songs;
                 foreach ($songs as $song){
-                    if($this->knownAlbums->count($song->album) < 2){
+                    if($this->knownAlbums->count($song->album) < 5){
                         $promises[] = $this->database->getSongsByAlbum($song->album, 50);
                         $promises[] = $this->database->getSongsByAlbum($song->album, 10, Database::ORDER_BY_RANDOM);
                     }
@@ -146,7 +146,12 @@ class RandomSelector {
                 \React\Promise\reduce($promises, function ($carry, $item){
                     return array_merge($carry, $item);
                 }, [])->then(function ($data) use ($resolve, $limit){
-                    $songs = $this->filterSongs($data);
+                    $songs = $this->filterSongs($data, function ($song){
+                        if($this->knownAlbums->count($song->album) >= 1){
+                            return true;
+                        }
+                        return false;
+                    });
                     if(count($songs) > $limit){
                         $selected = [];
                         for($i = 0; $i < $limit; ++$i){
