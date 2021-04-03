@@ -122,7 +122,7 @@ class RandomSelector {
         return new Promise(function (callable $resolve, callable $reject) use($initialSongs, $limit){
             ($initialSongs === null ? $this->database->getHistory(5) : \React\Promise\resolve($initialSongs))->then(function ($songs) use ($initialSongs, $resolve, $limit) {
                 $promises = [];
-                $songs = $initialSongs === null ? array_merge([$this->nr], $songs) : $songs;
+                $songs = (isset($this->nr->hash) and $initialSongs === null) ? array_merge($songs, [$this->nr]) : $songs;
                 foreach ($songs as $song){
                     if($this->knownAlbums->count($song->album) < 5){
                         $promises[] = $this->database->getSongsByAlbum($song->album, 50);
@@ -261,7 +261,7 @@ class RandomSelector {
                 return;
             }
 
-            $this->getRelated(500)->then(function ($songs) use($resolve, $reject){
+            $this->getRelated(null, 500)->then(function ($songs) use($resolve, $reject){
                 $p = array_merge($this->pool, $songs);
 
                 $this->getBestFit($p)->then(function ($songs) use ($resolve){
