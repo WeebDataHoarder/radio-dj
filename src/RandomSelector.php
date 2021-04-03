@@ -73,7 +73,6 @@ class RandomSelector {
         return new Promise(function (callable $resolve, callable $reject) use($limit){
             \React\Promise\reduce([
                 $this->database->getFavoriteCountSongs(1, 3, 100, Database::ORDER_BY_RANDOM),
-                $this->database->getFavoriteCountSongs(1, 3, 10, Database::ORDER_BY_SCORE),
                 $this->database->getSongsByTag("aotw", 50, Database::ORDER_BY_RANDOM),
             ], function ($carry, $item){
                 return array_merge($carry, $item);
@@ -108,18 +107,7 @@ class RandomSelector {
         return new Promise(function (callable $resolve, callable $reject) use($limit){
             $promises = [];
             foreach ($this->listeners as $l){
-                $promises[] = $this->database->getSongsByUserFavorite($l, 10, Database::ORDER_BY_SCORE);
-                $promises[] = $this->database->getSongsByUserFavorite($l, 100, Database::ORDER_BY_RANDOM);
-                $promises[] = new Promise(function ($resolve, $reject) use ($l) {
-                    $this->database->getSongsByUserFavorite($l, 5, Database::ORDER_BY_SCORE)->then(function ($songs) use ($resolve) {
-                        $this->getRelated($songs, 50)->then(function ($songs) use($resolve){
-                            foreach ($songs as $song){
-                                $song->preferential = true;
-                            }
-                            $resolve($songs);
-                        });
-                    });
-                });
+                $promises[] = $this->database->getSongsByUserFavorite($l, 10, Database::ORDER_BY_RANDOM);
                 $promises[] = new Promise(function ($resolve, $reject) use ($l) {
                     $this->database->getSongsByUserFavorite($l, 10, Database::ORDER_BY_RANDOM)->then(function ($songs) use ($resolve) {
                         $this->getRelated($songs, 100)->then(function ($songs) use($resolve){
