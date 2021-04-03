@@ -269,7 +269,7 @@ class RandomSelector {
                     }
                     foreach ($song->favored_by as $u){
                         if(in_array($u, $this->listeners, true)){
-                            $score += 20;
+                            $score += 10;
                         }
                     }
 
@@ -279,7 +279,7 @@ class RandomSelector {
                         }
                     }
 
-                    $score += count($song->favored_by) * 10;
+                    $score += count($song->favored_by) * 2;
                     $score += max(0, (10 - $song->play_count) * 4);
 
                     $song->score = $score;
