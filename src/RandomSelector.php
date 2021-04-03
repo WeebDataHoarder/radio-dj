@@ -33,9 +33,12 @@ class RandomSelector {
         });
         $this->api->getNowRandom()->then(function ($nr){
             $this->nr = $nr;
+            $this->knownArtists->add($nr->artist);
+            $this->knownAlbums->add($nr->album);
+            $this->knownTitles->add($nr->title);
         });
 
-        $this->database->getHistory(500)->then(function ($songs){
+        $this->database->getHistory(1000)->then(function ($songs){
             foreach ($songs as $song){
                 $this->knownArtists->add($song->artist);
                 $this->knownAlbums->add($song->album);
@@ -107,9 +110,10 @@ class RandomSelector {
         return new Promise(function (callable $resolve, callable $reject) use($limit){
             $promises = [];
             foreach ($this->listeners as $l){
+                $promises[] = $this->database->getSongsByUserFavorite($l, 5, Database::ORDER_BY_RANDOM);
                 $promises[] = new Promise(function ($resolve, $reject) use ($l) {
-                    $this->database->getSongsByUserFavorite($l, 10, Database::ORDER_BY_RANDOM)->then(function ($songs) use ($resolve) {
-                        $this->getRelated($songs, 100)->then($resolve);
+                    $this->database->getSongsByUserFavorite($l, 100, Database::ORDER_BY_RANDOM)->then(function ($songs) use ($resolve) {
+                        $this->getRelated($songs, 20)->then($resolve);
                     });
                 });
             }
@@ -117,23 +121,20 @@ class RandomSelector {
             \React\Promise\reduce($promises, function ($carry, $item){
                 return array_merge($carry, $item);
             }, [])->then(function ($data) use ($resolve, $limit){
-                $songs = $this->filterSongs($data, function ($song){
-                    foreach ($song->favored_by as $u){
-                        if(in_array($u, $this->listeners, true)){
-                            return true;
-                        }
-                    }
-                    if($song->play_count > 10){
-                        return true;
-                    }
-
-                    return false;
-                });
+                $songs = $this->filterSongs($data);
                 $selected = [];
                 for($i = 0; $i < $limit; ++$i){
                     if(count($songs) > 0){
                         shuffle($songs);
                         $s = array_pop($songs);
+
+                        if($s->play_count < 10){
+                            $s->preferential = true;
+                        }
+                        if(count($s->favored_by) > 0 and count($s->favored_by) < 4){
+                            $s->preferential = true;
+                        }
+
                         $selected[] = $s;
                     }
                 }
@@ -150,13 +151,13 @@ class RandomSelector {
                 $ids = [];
                 foreach ($songs as $song){
                     $ids[$song->id] = true;
-                    if($this->knownAlbums->count($song->album) < 5){
-                        $promises[] = $this->database->getSongsByAlbum($song->album, 50);
-                        $promises[] = $this->database->getSongsByAlbum($song->album, 10, Database::ORDER_BY_RANDOM);
+                    if($this->knownAlbums->count($song->album) < 2){
+                        $promises[] = $this->database->getSongsByAlbum($song->album, 10, Database::ORDER_BY_SCORE);
+                        $promises[] = $this->database->getSongsByAlbum($song->album, 50, Database::ORDER_BY_RANDOM);
                     }
-                    if($this->knownArtists->count($song->artist) < 5){
-                        $promises[] = $this->database->getSongsByArtist($song->artist, 50);
-                        $promises[] = $this->database->getSongsByArtist($song->artist, 10, Database::ORDER_BY_RANDOM);
+                    if($this->knownArtists->count($song->artist) < 4){
+                        $promises[] = $this->database->getSongsByArtist($song->artist, 10, Database::ORDER_BY_SCORE);
+                        $promises[] = $this->database->getSongsByArtist($song->artist, 50, Database::ORDER_BY_RANDOM);
                     }
 
                 }
@@ -203,7 +204,7 @@ class RandomSelector {
         });
     }
 
-    public function recreateQueue($desiredQueueLength = 64) : Promise{
+    public function recreateQueue($desiredQueueLength = 32) : Promise{
         return new Promise(function ($resolve, $reject) use ($desiredQueueLength){
             $this->pool = $this->filterSongs($this->pool, function ($song){
                 if($this->knownArtists->count($song->artist) > 0 and $this->knownAlbums->count($song->album) >= 2){
@@ -361,9 +362,9 @@ class RandomSelector {
         foreach ($entries as $song){
             if($this->knownTitles->count($song->title) >= 1){
                 continue;
-            } else if($this->knownArtists->count($song->artist) >= 5){
+            } else if($this->knownArtists->count($song->artist) >= 4){
                 continue;
-            } else if($this->knownAlbums->count($song->album) >= 5){
+            } else if($this->knownAlbums->count($song->album) >= 2){
                 continue;
             } else if(is_callable($filter) and $filter($song)){
                 continue;
