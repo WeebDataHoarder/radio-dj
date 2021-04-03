@@ -27,15 +27,6 @@ FROM songs
 JOIN artists ON songs.artist = artists.id
 JOIN albums ON songs.album = albums.id
 {WHERE_REPLACEMENT}
-GROUP BY
-songs.id,
-songs.hash,
-songs.title,
-artists.name,
-albums.name,
-songs.path,
-songs.duration,
-songs.status
 SQL;
 
 
@@ -54,15 +45,6 @@ FROM songs
 JOIN artists ON songs.artist = artists.id
 JOIN albums ON songs.album = albums.id
 {WHERE_REPLACEMENT}
-GROUP BY
-songs.id,
-songs.hash,
-songs.title,
-artists.name,
-albums.name,
-songs.path,
-songs.duration,
-songs.status
 SQL;
     public const ORDER_BY_SCORE = 'ORDER BY (favorite_count * 5 + play_count + (CASE WHEN path ILIKE \'%%.flac\' THEN 5 ELSE 0 END)) DESC, path ASC';
     public const ORDER_BY_RANDOM = 'ORDER BY random()';
