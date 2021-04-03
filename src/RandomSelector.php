@@ -100,10 +100,10 @@ class RandomSelector {
         return new Promise(function (callable $resolve, callable $reject) use($limit){
             $promises = [];
             foreach ($this->listeners as $l){
-                $promises[] = $this->database->getSongsByUserFavorite($l, 10, Database::ORDER_BY_RANDOM);
+                $promises[] = $this->database->getSongsByUserFavorite($l, 100, Database::ORDER_BY_RANDOM);
                 $promises[] = new Promise(function ($resolve, $reject) use ($l) {
                     $this->database->getSongsByUserFavorite($l, 10, Database::ORDER_BY_RANDOM)->then(function ($songs) use ($resolve) {
-                        $this->getRelated($songs, 90)->then($resolve);
+                        $this->getRelated($songs, 100)->then($resolve);
                     });
                 });
             }
@@ -189,10 +189,10 @@ class RandomSelector {
             if(count($this->pool) < $desiredQueueLength){
                 $promises = [];
                 if(count($this->listeners) > 0){
-                    $promises[] = $this->getFromListeners(60);
+                    $promises[] = $this->getFromListeners(200);
                 }
-                $promises[] = $this->getGems(20);
-                $promises[] = $this->getRandomOpEd(5);
+                $promises[] = $this->getGems(200);
+                $promises[] = $this->getRandomOpEd(200);
                 $promises[] = $this->getRelated(null, 15);
                 $promises[] = (new Promise(function ($resolve, $reject){
                     $this->database->getRandom()->then(function ($r) use ($resolve){
