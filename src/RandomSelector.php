@@ -230,7 +230,12 @@ class RandomSelector {
                 \React\Promise\reduce($promises, function ($carry, $item){
                     return array_merge($carry, $item);
                 }, [])->then(function ($data) use ($promises, $resolve, $desiredQueueLength){
-                    $this->getBestFit($this->filterSongs($data), $desiredQueueLength - count($this->pool))->then(function ($songs) use ($resolve){
+                    $this->getBestFit($this->filterSongs($data, function ($song){
+                        if($this->knownArtists->count($song->artist) > 0 and $this->knownAlbums->count($song->album) >= 2){
+                            return true;
+                        }
+                        return false;
+                    }), $desiredQueueLength - count($this->pool))->then(function ($songs) use ($resolve){
                         $this->pool = array_merge($this->pool, $songs);
                         $resolve();
                     });
@@ -248,6 +253,7 @@ class RandomSelector {
     public function getBestFit($songs, $limit = 1){
         return new Promise(function (callable $resolve, callable $reject) use ($songs, $limit){
             $this->database->getNowPlaying()->then(function ($np) use ($songs, $limit, $resolve, $reject){
+
                 $nr = $this->nr;
                 foreach ($songs as $song){
                     $score = isset($song->preferential) ? 50 : 1;
@@ -310,7 +316,12 @@ class RandomSelector {
             $this->getRelated(null, 500)->then(function ($songs) use($resolve, $reject){
                 $p = array_merge($this->pool, $songs);
 
-                $this->getBestFit($p)->then(function ($songs) use ($resolve){
+                $this->getBestFit($this->filterSongs($p, function ($song){
+                    if($this->knownArtists->count($song->artist) > 0 and $this->knownAlbums->count($song->album) >= 2){
+                        return true;
+                    }
+                    return false;
+                }))->then(function ($songs) use ($resolve){
                     $this->database->getSongById($songs[0]->id)->then(function ($song) use ($resolve){
                         foreach ($this->pool as $k => $s){
                             if($song->id === $s->id){
