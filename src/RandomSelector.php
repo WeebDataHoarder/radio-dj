@@ -73,6 +73,7 @@ class RandomSelector {
         return new Promise(function (callable $resolve, callable $reject) use($limit){
             \React\Promise\reduce([
                 $this->database->getFavoriteCountSongs(1, 3, 100, Database::ORDER_BY_RANDOM),
+                $this->database->getFavoriteCountSongs(1, 3, 10, Database::ORDER_BY_SCORE),
                 $this->database->getSongsByTag("aotw", 50, Database::ORDER_BY_RANDOM),
             ], function ($carry, $item){
                 return array_merge($carry, $item);
@@ -103,7 +104,7 @@ class RandomSelector {
         });
     }
 
-    public function getFromListeners($limit = 5) : Promise {
+    public function getFromListeners($limit) : Promise {
         return new Promise(function (callable $resolve, callable $reject) use($limit){
             $promises = [];
             foreach ($this->listeners as $l){

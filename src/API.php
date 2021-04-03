@@ -49,10 +49,10 @@ class API{
                 $ct = $response->getHeader("content-type");
                 $ct = is_array($ct) ? $ct[0] ?? "" : $ct;
                 if(strpos($ct, "/json") !== false){
-                    $resolve(json_decode($ct));
+                    $resolve(json_decode($response->getBody()));
                     return;
                 }
-                $resolve($ct);
+                $resolve($response->getBody());
             })->otherwise($reject);
         });
     }
