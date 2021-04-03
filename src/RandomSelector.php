@@ -124,7 +124,7 @@ class RandomSelector {
                 $promises = [];
                 $songs = (isset($this->nr->hash) and $initialSongs === null) ? array_merge($songs, [$this->nr]) : $songs;
                 foreach ($songs as $song){
-                    if($this->knownAlbums->count($song->album) < 5){
+                    if($this->knownAlbums->count($song->album) < 2){
                         $promises[] = $this->database->getSongsByAlbum($song->album, 50);
                         $promises[] = $this->database->getSongsByAlbum($song->album, 10, Database::ORDER_BY_RANDOM);
                     }
