@@ -16,6 +16,7 @@ class RandomSelector {
 
     private array $pool = [];
     private array $listeners = [];
+    private $nr;
 
 
     public function __construct(LoopInterface $loop, Database $database, API $api) {
@@ -25,8 +26,9 @@ class RandomSelector {
         $this->knownAlbums = new KnownValuesContainer(100);
         $this->knownArtists = new KnownValuesContainer(300);
         $this->knownTitles = new KnownValuesContainer(3000);
+        $this->nr = (object) [];
 
-        $loop->addPeriodicTimer(30, [$this, "checkQueue"]);
+        $loop->addPeriodicTimer(5, [$this, "checkQueue"]);
     }
 
     public function getRandomOpEd($limit = 5) : Promise {
@@ -42,7 +44,9 @@ class RandomSelector {
                 for($i = 0; $i < $limit; ++$i){
                     if(count($songs) > 0){
                         shuffle($songs);
-                        $selected[] = array_pop($songs);
+                        $s = array_pop($songs);
+                        $s->preferential = true;
+                        $selected[] = $s;
                     }
                 }
                 $resolve($selected);
@@ -74,7 +78,9 @@ class RandomSelector {
                 for($i = 0; $i < $limit; ++$i){
                     if(count($songs) > 0){
                         shuffle($songs);
-                        $selected[] = array_pop($songs);
+                        $s = array_pop($songs);
+                        $s->preferential = true;
+                        $selected[] = $s;
                     }
                 }
                 $resolve($selected);
@@ -102,7 +108,9 @@ class RandomSelector {
                 for($i = 0; $i < $limit; ++$i){
                     if(count($songs) > 0){
                         shuffle($songs);
-                        $selected[] = array_pop($songs);
+                        $s = array_pop($songs);
+                        $s->preferential = true;
+                        $selected[] = $s;
                     }
                 }
                 $resolve($selected);
@@ -147,6 +155,9 @@ class RandomSelector {
         $this->api->getListeners()->then(function ($l) {
             $this->listeners = $l;
         });
+        $this->api->getNowRandom()->then(function ($nr){
+            $this->nr = $nr;
+        });
 
         $this->pool = $this->filterSongs($this->pool);
 
@@ -155,7 +166,7 @@ class RandomSelector {
         });
     }
 
-    public function recreateQueue($desiredQueueLength = 8) : Promise{
+    public function recreateQueue($desiredQueueLength = 64) : Promise{
         return new Promise(function ($resolve, $reject) use ($desiredQueueLength){
             if(count($this->pool) < $desiredQueueLength){
                 $promises = [];
@@ -192,42 +203,41 @@ class RandomSelector {
     public function getBestFit($songs, $limit = 1){
         return new Promise(function (callable $resolve, callable $reject) use ($songs, $limit){
             $this->database->getNowPlaying()->then(function ($np) use ($songs, $limit, $resolve, $reject){
-                $this->api->getNowRandom()->then(function ($nr) use ($songs, $limit, $np, $resolve, $reject){
-                    foreach ($songs as $song){
-                        $score = 1;
-                        if(($nr->album ?? "") === $song->album){
-                            $score += 100;
+                $nr = $this->nr;
+                foreach ($songs as $song){
+                    $score = isset($song->preferential) ? 50 : 1;
+                    if(($nr->album ?? "") === $song->album){
+                        $score += 100;
+                    }
+                    if(($nr->artist ?? "") === $song->artist){
+                        $score += 100;
+                    }
+                    if(($np->album ?? "") === $song->album){
+                        $score += 20;
+                    }
+                    if(($np->artist ?? "") === $song->artist){
+                        $score += 20;
+                    }
+                    foreach ($song->favored_by as $u){
+                        if(in_array($u, $this->listeners, true)){
+                            $score += 10;
                         }
-                        if(($nr->artist ?? "") === $song->artist){
-                            $score += 100;
-                        }
-                        if(($np->album ?? "") === $song->album){
-                            $score += 20;
-                        }
-                        if(($np->artist ?? "") === $song->artist){
-                            $score += 20;
-                        }
-                        foreach ($song->favored_by as $u){
-                            if(in_array($u, $this->listeners, true)){
-                                $score += 10;
-                            }
-                        }
-
-                        $score += count($song->favored_by);
-                        $score += max(0, (10 - $song->play_count) * 15);
-
-                        $song->score = $score;
                     }
 
-                    usort($songs, function (\stdClass $a, \stdClass $b){
-                        if($a->score === $b->score){
-                            return 0;
-                        }
-                        return ($a->score > $b->score) ? -1 : 1;
-                    });
+                    $score += count($song->favored_by);
+                    $score += max(0, (10 - $song->play_count) * 4);
 
-                    $resolve(array_slice($songs, 0, min(count($songs), $limit)));
-                })->otherwise($reject);
+                    $song->score = $score;
+                }
+
+                usort($songs, function (\stdClass $a, \stdClass $b){
+                    if($a->score === $b->score){
+                        return 0;
+                    }
+                    return ($a->score > $b->score) ? -1 : 1;
+                });
+
+                $resolve(array_slice($songs, 0, min(count($songs), $limit)));
             })->otherwise($reject);
         });
     }
@@ -240,6 +250,7 @@ class RandomSelector {
                     $this->knownArtists->add($song->artist);
                     $this->knownAlbums->add($song->album);
                     $this->knownTitles->add($song->title);
+                    $this->nr = $song;
                     $resolve($song);
                 });
                 return;
@@ -257,15 +268,26 @@ class RandomSelector {
                     $this->knownArtists->add($song->artist);
                     $this->knownAlbums->add($song->album);
                     $this->knownTitles->add($song->title);
+                    $this->nr = $song;
                     $resolve($song);
-                })->otherwise(function ($e) use($resolve){
+                })->otherwise(function ($e) use ($resolve){
                     echo $e;
                     $this->database->getRandom()->then(function ($song) use($resolve){
                         $this->knownArtists->add($song->artist);
                         $this->knownAlbums->add($song->album);
                         $this->knownTitles->add($song->title);
+                        $this->nr = $song;
                         $resolve($song);
                     });
+                });
+            })->otherwise(function ($e) use ($resolve){
+                echo $e;
+                $this->database->getRandom()->then(function ($song) use($resolve){
+                    $this->knownArtists->add($song->artist);
+                    $this->knownAlbums->add($song->album);
+                    $this->knownTitles->add($song->title);
+                    $this->nr = $song;
+                    $resolve($song);
                 });
             });
         });
