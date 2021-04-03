@@ -66,7 +66,7 @@ songs.status
 SQL;
     public const ORDER_BY_SCORE = 'ORDER BY (favorite_count * 5 + play_count + (CASE WHEN path ILIKE \'%%.flac\' THEN 5 ELSE 0 END)) DESC, path ASC';
     public const ORDER_BY_RANDOM = 'ORDER BY random()';
-    private const WHERE_EXCLUDER = '(duration >= 100 AND duration < 700 AND NOT songs.id IN(SELECT song FROM taggings WHERE taggings.tag IN(SELECT id FROM tags WHERE (tags.name = \'drama\' OR tags.name = \'noise\')) AND songs.title !~* \'[^\w](w/o|without)[^\w].*[\)\]-]$|(karaoke|instrumental|acoustic|off vocal|vocal off|short size|movie size|tv size|tv anime|tv|カラオケ)[・\s]*(カラオケ|バージョン)?(.*ver(sion|.)?)?\s*[->~～\])）]?[)\]]?\s*$\')';
+    private const WHERE_EXCLUDER = '(duration >= 100 AND duration < 700 AND NOT songs.id IN(SELECT song FROM taggings WHERE taggings.tag IN(SELECT id FROM tags WHERE (tags.name = \'drama\' OR tags.name = \'noise\'))) AND songs.title !~* \'[^\w](w/o|without)[^\w].*[\)\]-]$|(karaoke|instrumental|acoustic|off vocal|vocal off|short size|movie size|tv size|tv anime|tv|カラオケ)[・\s]*(カラオケ|バージョン)?(.*ver(sion|.)?)?\s*[->~～\])）]?[)\]]?\s*$\')';
 
     private Client $client;
 
