@@ -223,7 +223,7 @@ class RandomSelector {
             $this->database->getNowPlaying()->then(function ($np) use ($songs, $limit, $resolve, $reject){
                 $nr = $this->nr;
                 foreach ($songs as $song){
-                    $score = isset($song->preferential) ? 20 : 1;
+                    $score = isset($song->preferential) ? 50 : 1;
                     if(($nr->album ?? "") === $song->album){
                         $score += 100;
                     }
@@ -238,7 +238,7 @@ class RandomSelector {
                     }
                     foreach ($song->favored_by as $u){
                         if(in_array($u, $this->listeners, true)){
-                            $score += 10;
+                            $score += 50;
                         }
                     }
 
