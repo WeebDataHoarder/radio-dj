@@ -56,12 +56,15 @@ class RandomSelector {
 
     public function getSongTagBias($song){
         $bias = 1;
+        $hasTags = false;
         foreach ($song->tags as $t){
             if(!preg_match("#^(catalog|(ab|jps|red|bbt)[tgsa])-#iu", $t) and $t !== "op" and $t !== "ed" and $t !== "aotw"){
                 $bias *= $this->getTagBias($t);
+            }else{
+                $hasTags = true;
             }
         }
-        return 100 * $bias;
+        return $hasTags ? 100 * $bias : 0;
     }
 
     public function getTagBias($tag){
