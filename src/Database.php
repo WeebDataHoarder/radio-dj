@@ -66,7 +66,7 @@ songs.status
 SQL;
     public const ORDER_BY_SCORE = 'ORDER BY (favorite_count * 5 + play_count + (CASE WHEN path ILIKE \'%%.flac\' THEN 5 ELSE 0 END)) DESC, path ASC';
     public const ORDER_BY_RANDOM = 'ORDER BY random()';
-    private const WHERE_EXCLUDER = '(duration >= 100 AND duration < 700 AND NOT EXISTS(SELECT 1 FROM taggings JOIN tags ON (taggings.tag = tags.id) WHERE taggings.song = songs.id AND (tags.name = \'drama\' OR tags.name = \'noise\')) AND songs.title !~* \'[^\w](w/o|without)[^\w].*[\)\]-]$|(karaoke|instrumental|acoustic|off vocal|vocal off|short size|movie size|tv size|tv anime|tv|カラオケ)[・\s]*(カラオケ|バージョン)?(.*ver(sion|.)?)?\s*[->~～\])）]?[)\]]?\s*$\')';
+    private const WHERE_EXCLUDER = '(duration >= 100 AND duration < 700 AND NOT songs.id IN(SELECT song FROM taggings WHERE taggings.tag IN(SELECT id FROM tags WHERE (tags.name = \'drama\' OR tags.name = \'noise\')) AND songs.title !~* \'[^\w](w/o|without)[^\w].*[\)\]-]$|(karaoke|instrumental|acoustic|off vocal|vocal off|short size|movie size|tv size|tv anime|tv|カラオケ)[・\s]*(カラオケ|バージョン)?(.*ver(sion|.)?)?\s*[->~～\])）]?[)\]]?\s*$\')';
 
     private Client $client;
 
@@ -137,7 +137,7 @@ SQL;
     public function getSongsByTag(string $string, int $limit = 0, $orderBy = self::ORDER_BY_SCORE): Promise {
         return new Promise(function (callable $resolve, callable $reject) use($string, $limit, $orderBy) {
             $sql = self::SONG_SQL;
-            $sql = str_replace("{WHERE_REPLACEMENT}", "WHERE songs.status = 'active' AND EXISTS(SELECT 1 FROM taggings JOIN tags ON (taggings.tag = tags.id) WHERE taggings.song = songs.id AND tags.name = lower(\$1)) AND " . self::WHERE_EXCLUDER, $sql);
+            $sql = str_replace("{WHERE_REPLACEMENT}", "WHERE songs.status = 'active' AND songs.id IN(SELECT song FROM taggings WHERE taggings.tag = (SELECT id FROM tags WHERE tags.name = \$1)) AND " . self::WHERE_EXCLUDER, $sql);
 
             $result = [];
             $this->client->executeStatement($sql . " " . $orderBy . ($limit > 0 ? " LIMIT " . $limit . ";" : ""), [$string])->subscribe(function ($row) use (&$result){
@@ -154,7 +154,7 @@ SQL;
     public function getSongsByUserFavorite(string $string, int $limit = 0, $orderBy = self::ORDER_BY_SCORE): Promise {
         return new Promise(function (callable $resolve, callable $reject) use($string, $limit, $orderBy) {
             $sql = self::SONG_SQL;
-            $sql = str_replace("{WHERE_REPLACEMENT}", "WHERE songs.status = 'active' AND EXISTS(SELECT 1 FROM users JOIN favorites ON (favorites.user_id = users.id) WHERE favorites.song = songs.id AND users.name = lower(\$1)) AND " . self::WHERE_EXCLUDER, $sql);
+            $sql = str_replace("{WHERE_REPLACEMENT}", "WHERE songs.status = 'active' AND songs.id IN(SELECT song FROM favorites WHERE favorites.user_id = (SELECT id FROM users WHERE users.name = \$1)) AND " . self::WHERE_EXCLUDER, $sql);
 
             $result = [];
             $this->client->executeStatement($sql . " " . $orderBy . ($limit > 0 ? " LIMIT " . $limit . ";" : ""), [$string])->subscribe(function ($row) use (&$result){
@@ -188,7 +188,7 @@ SQL;
     public function getSongsByNotUserFavorite(string $string, int $limit = 0, $orderBy = self::ORDER_BY_SCORE): Promise {
         return new Promise(function (callable $resolve, callable $reject) use($string, $limit, $orderBy) {
             $sql = self::SONG_SQL;
-            $sql = str_replace("{WHERE_REPLACEMENT}", "WHERE songs.status = 'active' AND songs.favorite_count > 0 AND NOT EXISTS(SELECT 1 FROM users JOIN favorites ON (favorites.user_id = users.id) WHERE favorites.song = songs.id AND users.name = lower(\$1)) AND " . self::WHERE_EXCLUDER, $sql);
+            $sql = str_replace("{WHERE_REPLACEMENT}", "WHERE songs.status = 'active' AND songs.favorite_count > 0 AND NOT songs.id IN(SELECT song FROM favorites WHERE favorites.user_id = (SELECT id FROM users WHERE users.name = \$1)) AND " . self::WHERE_EXCLUDER, $sql);
 
             $result = [];
             $this->client->executeStatement($sql . " " . $orderBy . ($limit > 0 ? " LIMIT " . $limit . ";" : ""), [$string])->subscribe(function ($row) use (&$result){
