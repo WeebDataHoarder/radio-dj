@@ -28,6 +28,14 @@ class RandomSelector {
         $this->knownTitles = new KnownValuesContainer(3000);
         $this->nr = (object) [];
 
+        $this->database->getHistory(500)->then(function ($songs){
+            foreach ($songs as $song){
+                $this->knownArtists->add($song->artist);
+                $this->knownAlbums->add($song->album);
+                $this->knownTitles->add($song->title);
+            }
+        });
+
         $loop->addPeriodicTimer(5, [$this, "checkQueue"]);
     }
 
