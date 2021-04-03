@@ -28,6 +28,13 @@ class RandomSelector {
         $this->knownTitles = new KnownValuesContainer(3000);
         $this->nr = (object) [];
 
+        $this->api->getListeners()->then(function ($l) {
+            $this->listeners = $l;
+        });
+        $this->api->getNowRandom()->then(function ($nr){
+            $this->nr = $nr;
+        });
+
         $this->database->getHistory(500)->then(function ($songs){
             foreach ($songs as $song){
                 $this->knownArtists->add($song->artist);
@@ -36,7 +43,7 @@ class RandomSelector {
             }
         });
 
-        $loop->addPeriodicTimer(5, [$this, "checkQueue"]);
+        $loop->addPeriodicTimer(10, [$this, "checkQueue"]);
     }
 
     public function getRandomOpEd($limit = 5) : Promise {
@@ -100,7 +107,13 @@ class RandomSelector {
         return new Promise(function (callable $resolve, callable $reject) use($limit){
             $promises = [];
             foreach ($this->listeners as $l){
+                $promises[] = $this->database->getSongsByUserFavorite($l, 10, Database::ORDER_BY_SCORE);
                 $promises[] = $this->database->getSongsByUserFavorite($l, 100, Database::ORDER_BY_RANDOM);
+                $promises[] = new Promise(function ($resolve, $reject) use ($l) {
+                    $this->database->getSongsByUserFavorite($l, 5, Database::ORDER_BY_SCORE)->then(function ($songs) use ($resolve) {
+                        $this->getRelated($songs, 50)->then($resolve);
+                    });
+                });
                 $promises[] = new Promise(function ($resolve, $reject) use ($l) {
                     $this->database->getSongsByUserFavorite($l, 10, Database::ORDER_BY_RANDOM)->then(function ($songs) use ($resolve) {
                         $this->getRelated($songs, 100)->then($resolve);
