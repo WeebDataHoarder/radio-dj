@@ -426,7 +426,7 @@ class RandomSelector {
                 continue;
             }else if(in_array("drama", $song->tags, true) or in_array("noise", $song->tags, true)){
                 continue;
-            }else if(preg_match("#[^\w](w/o|without)[^\w].*[\)\]-]$|(karaoke|instrumental|acoustic|off vocal|vocal off|short size|movie size|tv size|tv anime|tv|カラオケ)[・\s]*(カラオケ|バージョン)?(.*ver(sion|.)?)?\s*[->~～\])）]?[)\]]?\s*$#", $song->title) > 0){
+            }else if(preg_match("#[^\w](w/o|without)[^\w].*[\)\]-]$|(karaoke|instrumental|acoustic|off vocal|vocal off|short size|movie size|tv size|tv anime|tv|カラオケ)[・\s]*(カラオケ|バージョン)?(.*ver(sion|.)?)?\s*[->~～\])）]?[)\]]?\s*#iu", $song->title) > 0){
                 continue;
             }else if($this->knownTitles->count($song->title) >= 1){
                 continue;
