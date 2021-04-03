@@ -186,7 +186,11 @@ class RandomSelector {
                         $promises[] = $this->database->getSongsByArtist($song->artist, 10, Database::ORDER_BY_SCORE);
                         $promises[] = $this->database->getSongsByArtist($song->artist, 50, Database::ORDER_BY_RANDOM);
                     }
-
+                    foreach ($song->tags as $t){
+                        if(!preg_match("#^(catalog|(ab|jps|red|bbt)[tgsa])-#iu", $t) and $t !== "op" and $t !== "ed" and $t !== "aotw"){
+                            $promises[] = $this->database->getSongsByTag($t, 15, Database::ORDER_BY_RANDOM);
+                        }
+                    }
                 }
 
                 \React\Promise\reduce($promises, function ($carry, $item){
@@ -294,6 +298,17 @@ class RandomSelector {
                     }
                     if(($np->artist ?? "") === $song->artist){
                         $score += 20;
+                    }
+
+                    foreach ($song->tags as $t){
+                        if(!preg_match("#^(catalog|(ab|jps|red|bbt)[tgsa])-#iu", $t) and $t !== "op" and $t !== "ed" and $t !== "aotw"){
+                            if(in_array($t, $nr->tags, true)){
+                                $score += 10;
+                            }
+                            if(in_array($t, $np->tags, true)){
+                                $score += 5;
+                            }
+                        }
                     }
                     foreach ($song->favored_by as $u){
                         if(in_array($u, $this->listeners, true)){
