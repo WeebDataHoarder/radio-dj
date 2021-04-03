@@ -112,12 +112,22 @@ class RandomSelector {
                 $promises[] = $this->database->getSongsByUserFavorite($l, 100, Database::ORDER_BY_RANDOM);
                 $promises[] = new Promise(function ($resolve, $reject) use ($l) {
                     $this->database->getSongsByUserFavorite($l, 5, Database::ORDER_BY_SCORE)->then(function ($songs) use ($resolve) {
-                        $this->getRelated($songs, 50)->then($resolve);
+                        $this->getRelated($songs, 50)->then(function ($songs) use($resolve){
+                            foreach ($songs as $song){
+                                $song->preferential = true;
+                            }
+                            $resolve($songs);
+                        });
                     });
                 });
                 $promises[] = new Promise(function ($resolve, $reject) use ($l) {
                     $this->database->getSongsByUserFavorite($l, 10, Database::ORDER_BY_RANDOM)->then(function ($songs) use ($resolve) {
-                        $this->getRelated($songs, 100)->then($resolve);
+                        $this->getRelated($songs, 100)->then(function ($songs) use($resolve){
+                            foreach ($songs as $song){
+                                $song->preferential = true;
+                            }
+                            $resolve($songs);
+                        });
                     });
                 });
             }
@@ -131,7 +141,6 @@ class RandomSelector {
                     if(count($songs) > 0){
                         shuffle($songs);
                         $s = array_pop($songs);
-                        $s->preferential = true;
                         $selected[] = $s;
                     }
                 }
@@ -252,7 +261,7 @@ class RandomSelector {
                     }
                     foreach ($song->favored_by as $u){
                         if(in_array($u, $this->listeners, true)){
-                            $score += 50;
+                            $score += 20;
                         }
                     }
 
