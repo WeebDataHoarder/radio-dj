@@ -254,12 +254,12 @@ class RandomSelector {
 
                 $nr = $this->nr;
                 foreach ($songs as $song){
-                    $score = isset($song->preferential) ? 50 : 1;
+                    $score = isset($song->preferential) ? 20 : 1;
                     if(($nr->album ?? "") === $song->album){
-                        $score += 100;
+                        $score += 50;
                     }
                     if(($nr->artist ?? "") === $song->artist){
-                        $score += 100;
+                        $score += 50;
                     }
                     if(($np->album ?? "") === $song->album){
                         $score += 20;
@@ -275,11 +275,11 @@ class RandomSelector {
 
                     foreach (["op", "ed", "aotw", "banger"] as $t){
                         if(in_array($t, $song->tags, true)){
-                            $score += 20;
+                            $score += 10;
                         }
                     }
 
-                    $score += count($song->favored_by) * 2;
+                    $score += min(20, count($song->favored_by) * 5);
                     $score += max(0, (10 - $song->play_count) * 4);
 
                     $song->score = $score;
