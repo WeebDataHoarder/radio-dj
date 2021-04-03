@@ -118,11 +118,15 @@ class RandomSelector {
                 return array_merge($carry, $item);
             }, [])->then(function ($data) use ($resolve, $limit){
                 $songs = $this->filterSongs($data, function ($song){
-                    foreach ($this->listeners as $l){
-                        if(in_array($l, $song->favored_by, true)){
+                    foreach ($song->favored_by as $u){
+                        if(in_array($u, $this->listeners, true)){
                             return true;
                         }
                     }
+                    if($song->play_count > 10){
+                        return true;
+                    }
+
                     return false;
                 });
                 $selected = [];
@@ -142,7 +146,7 @@ class RandomSelector {
         return new Promise(function (callable $resolve, callable $reject) use($initialSongs, $limit){
             ($initialSongs === null ? $this->database->getHistory(5) : \React\Promise\resolve($initialSongs))->then(function ($songs) use ($initialSongs, $resolve, $limit) {
                 $promises = [];
-                $songs = (isset($this->nr->hash) and $initialSongs === null) ? array_merge($songs, [$this->nr]) : $songs;
+                $songs = (isset($this->nr->id) and $initialSongs === null) ? array_merge($songs, [$this->nr]) : $songs;
                 $ids = [];
                 foreach ($songs as $song){
                     $ids[$song->id] = true;
@@ -160,7 +164,7 @@ class RandomSelector {
                 \React\Promise\reduce($promises, function ($carry, $item){
                     return array_merge($carry, $item);
                 }, [])->then(function ($data) use ($resolve, $limit, $ids){
-                    $songs = $this->filterSongs($data, function ($song, $ids){
+                    $songs = $this->filterSongs($data, function ($song) use ($ids){
                         if(isset($ids[$song->id])){
                             return true;
                         }
