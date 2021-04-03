@@ -265,7 +265,13 @@ class RandomSelector {
                         }
                     }
 
-                    $score += count($song->favored_by);
+                    foreach (["op", "ed", "aotw", "banger"] as $t){
+                        if(in_array($t, $song->tags, true)){
+                            $score += 20;
+                        }
+                    }
+
+                    $score += count($song->favored_by) * 10;
                     $score += max(0, (10 - $song->play_count) * 4);
 
                     $song->score = $score;
