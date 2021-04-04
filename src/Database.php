@@ -12,8 +12,8 @@ SELECT
 songs.id AS id,
 songs.hash AS hash,
 songs.title AS title,
-artists.name AS artist,
-albums.name AS album,
+(SELECT artists.name FROM artists WHERE songs.artist = artists.id LIMIT 1) AS artist,
+(SELECT albums.name FROM albums WHERE songs.album = albums.id LIMIT 1) AS album,    
 songs.path AS path,
 songs.duration AS duration,
 songs.favorite_count AS favorite_count,
@@ -21,11 +21,9 @@ songs.play_count AS play_count,
 songs.cover AS cover,
 array_to_json(ARRAY(SELECT jsonb_object_keys(songs.lyrics))) AS lyrics,
 songs.status AS status,
-array_to_json(ARRAY(SELECT tags.name FROM taggings JOIN tags ON (taggings.tag = tags.id) WHERE taggings.song = songs.id)) AS tags,
+array_to_json(ARRAY(SELECT tags.name FROM tags JOIN taggings ON (taggings.tag = tags.id) WHERE taggings.song = songs.id)) AS tags,
 array_to_json(ARRAY(SELECT users.name FROM users JOIN favorites ON (favorites.user_id = users.id) WHERE favorites.song = songs.id)) AS favored_by
 FROM songs
-JOIN artists ON songs.artist = artists.id
-JOIN albums ON songs.album = albums.id
 {WHERE_REPLACEMENT}
 SQL;
 
@@ -35,15 +33,13 @@ SELECT
 songs.id AS id,
 songs.hash AS hash,
 songs.title AS title,
-artists.name AS artist,
-albums.name AS album,
+(SELECT artists.name FROM artists WHERE songs.artist = artists.id LIMIT 1) AS artist,
+(SELECT albums.name FROM albums WHERE songs.album = albums.id LIMIT 1) AS album,    
 songs.duration AS duration,
 songs.play_count AS play_count,
-array_to_json(ARRAY(SELECT tags.name FROM taggings JOIN tags ON (taggings.tag = tags.id) WHERE taggings.song = songs.id)) AS tags,
+array_to_json(ARRAY(SELECT tags.name FROM tags JOIN taggings ON (taggings.tag = tags.id) WHERE taggings.song = songs.id)) AS tags,
 array_to_json(ARRAY(SELECT users.name FROM users JOIN favorites ON (favorites.user_id = users.id) WHERE favorites.song = songs.id)) AS favored_by
 FROM songs
-JOIN artists ON songs.artist = artists.id
-JOIN albums ON songs.album = albums.id
 {WHERE_REPLACEMENT}
 SQL;
     public const ORDER_BY_SCORE = 'ORDER BY (favorite_count * 5 + play_count + (CASE WHEN path ILIKE \'%%.flac\' THEN 5 ELSE 0 END)) DESC, path ASC';
