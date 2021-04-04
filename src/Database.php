@@ -42,7 +42,7 @@ array_to_json(ARRAY(SELECT users.name FROM users JOIN favorites ON (favorites.us
 FROM songs
 {WHERE_REPLACEMENT}
 SQL;
-    public const ORDER_BY_SCORE = 'ORDER BY (favorite_count * 5 + play_count + (CASE WHEN path ILIKE \'%%.flac\' THEN 5 ELSE 0 END)) DESC, path ASC';
+    public const ORDER_BY_SCORE = 'ORDER BY score DESC, path ASC';
     public const ORDER_BY_RANDOM = 'ORDER BY random()';
     private Client $client;
 
