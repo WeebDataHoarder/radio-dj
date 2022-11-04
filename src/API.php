@@ -20,7 +20,7 @@ class API{
     public function getListeners() : Promise{
         return new Promise(function ($resolve, $reject) {
             $this->request("/api/listeners")->then(function ($data) use($resolve){
-                $resolve($data->named_listeners);
+                $resolve(array_unique($data->named_listeners));
             })->otherwise($reject);
         });
     }
