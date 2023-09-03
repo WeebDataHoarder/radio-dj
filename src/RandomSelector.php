@@ -240,9 +240,9 @@ class RandomSelector {
     }
 
     public function checkQueue(){
-        $this->api->getListeners()->then(function ($l) {
+        /*$this->api->getListeners()->then(function ($l) {
             $this->listeners = $l;
-        });
+        });*/
         $this->api->getNowRandom()->then(function ($nr){
             $this->nr = $nr;
         });
